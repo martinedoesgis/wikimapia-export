@@ -1,9 +1,8 @@
 # wikimapia-export
 Export tool for Wikimapia data
 
-## Overview
-
-[Wikimapia](http://wikimapia.org/ "Title") is a geographical collaborative data base. This tool is deisgn to facilitate the use of its [API](http://wikimapia.org/api "Title") to export the data.
+![example](https://martinedoesgis.github.io/wikimapia-export/example.png
+ "example")
 
 
 ## How to use
