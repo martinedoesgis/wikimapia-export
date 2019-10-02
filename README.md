@@ -1,7 +1,7 @@
 # wikimapia-export
 Export tool for Wikimapia data
 
-![example](https://martinedoesgis.github.io/wikimapia-export/example.png
+![example](https://raw.githubusercontent.com/martinedoesgis/wikimapia-export/master/example.png
  "example")
 
 
