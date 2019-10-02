@@ -305,8 +305,8 @@ else {
 			
 			}
 		var sourceLang = item.language_iso;
-		var transUrl = "https://translate.google.fr/?hl=en#"+sourceLang+"/en/"+encodeURI(item.title)+""
-		poly.push(turf.polygon([coordinates],{"name":item.title, "type":categoryId, "sourceLang": sourceLang,"transUrl": transUrl}));
+		var transUrl = "https://translate.google.fr/?hl=en#"+sourceLang+"/en/"+encodeURI(item.name)+""
+		poly.push(turf.polygon([coordinates],{"name":item.name, "type":categoryId, "sourceLang": sourceLang,"transUrl": transUrl}));
 		}
 		
 		
@@ -323,14 +323,14 @@ else {
 		poly_geojson = L.geoJson(poly,{
 		onEachFeature(feature, layer) {
 		if (feature.properties.sourceLang == "en") {layer.bindPopup("<h4>"+feature.properties.name+"</h4>")}
-		else {layer.bindPopup("<h4>"+feature.properties.name+"</h4><a target='_blank' href="+feature.properties.transUrl+">Translate to english</a>")}
+		else {layer.bindPopup("<h4>"+feature.properties.name+"</h4>")}
 		}
 		}).addTo(map);
 		
 		centro_geojson = L.geoJson(centro,{
 		onEachFeature(feature, layer) {
 		if (feature.properties.sourceLang == "en") {layer.bindPopup("<h4>"+feature.properties.name+"</h4>")}
-		else {layer.bindPopup("<h4>"+feature.properties.name+"</h4><a target='_blank' href="+feature.properties.transUrl+">Translate to english</a>")}
+		else {layer.bindPopup("<h4>"+feature.properties.name+"</h4>")}
 		}
 		}).addTo(map);
 		
