@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset=utf-8 />
+	<title>Wikimapia Export</title>
+	<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+	<link href="css/stylish-portfolio.css" rel="stylesheet">
+	<link rel="stylesheet" href="src/leaflet/leaflet.css" />
+	<link rel="stylesheet" href="src/bootstrap-3.3.6-dist/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="src/leaflet-search-master/dist/leaflet-search.min.css" />
+	<link rel="stylesheet" href="css/main.css" />
+</head>
+
+<body>
+	<script src="src/categories.js"></script>
+	<script src="src/leaflet/leaflet.js"></script>
+	<script src='src/jquery/jquery-1.11.3.min.js'></script>
+	<script src="src/bootstrap-3.3.6-dist/js/bootstrap.min.js"></script>
+	<script src="src/turf/turf.min.js"></script>
+	<script src="src/spin/spin.min.js"></script>
+	<script src="src/bootstrap3-typeahead.js"></script>
+	<script src="src/leaflet-search-master/dist/leaflet-search.min.js"></script>
+
+	
+<div class="container-fluid">
+	<div class="alert alert-info alert-dismissible fade in" role="alert">
+		  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+			<span aria-hidden="true">&times;</span>
+		  </button>Welcome to the Wikimapia export tool ! This application simplifies the use of the <a href="http://wikimapia.org/api">Wikimapia API</a> and allows you to query and export (in GeoJSON) this rich geographical database.
+		</div>
+
+	<div class="row">
+		  <div class="col-md-4">
+		  
+		  
+			<form class="form">
+		  <div class="form-group">
+			<label for="key"  >Wikimapia API Key</label>
+			<span class="glyphicon glyphicon-question-sign" data-toggle="tooltip" data-placement="right" title="You can let &quot;example&quot;, it will work but you will have to wait a few time between each query, or you can request your own key on the Wikimapia website" aria-hidden="true"></span>
+			
+			<input type="text" class="form-control" id="key" placeholder="example" >
+		  </div>
+		  <div class="form-group">
+			<label for="categoryId">Category </label> | <a href="#"  data-toggle="modal" data-target="#myModal">See full list</a>
+			<input type="text"  class="form-control" id="categoryId" placeholder="" data-provide="typeahead" data-items="4">
+		  </div>
+			<div class="form-group col-xs-3">
+			</div>
+			<div class="form-group col-xs-6 pagination-centered text-center">
+				<label for="ex1">Top</label>
+				<input disabled class="form-control inputsm" id="top" type="text">
+			</div>
+			<br>
+			<br>
+			<br>
+			<br>
+			<div class="form-group col-xs-6 pagination-centered text-center">
+				<label for="ex1">Left</label>
+				<input disabled class="form-control inputsm" id="left" type="text">
+			</div>
+			<div class="form-group col-xs-6 pagination-centered text-center">
+				<label for="ex1">Right</label>
+				<input disabled class="form-control inputsm" id="right" type="text">
+			</div>
+			<div class="form-group col-xs-3">
+			</div>
+			<div class="form-group col-xs-6 pagination-centered text-center">
+				<label for="ex1">Bottom</label>
+				<input disabled class="form-control inputsm" id="bottom" type="text">
+			</div>
+		
+			<div>
+			<button type="button" class="btn btn-success" onclick="run()">Run query</button><br>
+			</div>
+			
+			
+			
+  
+</form>
+		  
+		  
+		  </div>
+		  <div class="col-md-8">
+		  
+			<div id="map">
+				<div id="shadow">
+				</div>
+				<div id="spin_div">
+				</div>
+			</div>
+			<em id="warningzoom" style="color:red"></em>
+		  
+		  </div>
+	</div>
+	
+	<br>
+	
+	<div id="alertsucess" class="alert alert-success">
+				
+				<b id="number_returned"><strong>Success!</strong> The query returned 10 features.</b> | <a id="export_points" ></a> | <a id="export_poly" ></a>
+				
+				
+	</div>
+	<div id="alert100" class="alert alert-warning">
+				
+				<strong>Warning!</strong> The query returned the maximum number of features (100). Try to reduce your area of interest or divide it in several queries.
+	</div>
+	
+
+
+	
+</div>
+
+
+
+<div id="myModal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Category List</h4>
+      </div>
+      <div class="modal-body">
+         <table id="category_table" class="table table-striped">
+		  <thead>
+			<tr>
+			  <th>#</th>
+			  <th>Category name</th>
+			  <th>Id</th>
+			</tr>
+		  </thead>
+		  <tbody>
+			
+		  </tbody>
+		</table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+
+<script>
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+})
+
+$("#alert100").hide();
+$("#alertsucess").hide();
+$("#spin_div").hide();
+$("#shadow").hide();
+
+for (var i in dict){
+var row ='<tr><td>'+dict[i].use+'</td><td>'+dict[i].Name+'</td><td>'+dict[i].Id+'</td></tr>';
+$("#category_table").append(row);
+}
+
+
+var type_choices =[];
+for (var i in dict){type_choices.push(dict[i].Name)}
+
+$("#categoryId").typeahead({        
+        source: type_choices
+});
+
+
+
+var poly = [];
+var poly_geojson = L.geoJson();
+
+var centro = [];
+var centro_geojson = L.geoJson();
+
+	var map = L.map('map').setView([45.588866,5.92363 ], 2);
+
+var OpenStreetMap_HOT = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, Tiles courtesy of <a href="http://hot.openstreetmap.org/" target="_blank">Humanitarian OpenStreetMap Team</a>'
+}).addTo(map);
+
+var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+});
+
+var baseMaps = {
+    "OSM HOT": OpenStreetMap_HOT,
+    "Esri World Imagery": Esri_WorldImagery
+};
+
+L.control.layers(baseMaps).addTo(map);
+	
+	
+	var mapbounds = map.getBounds();
+	document.getElementById("key").value = "example";
+	//document.getElementById("categoryId").value = "hospital";
+	document.getElementById("top").value = mapbounds._northEast.lat;
+	document.getElementById("right").value = mapbounds._northEast.lng;
+	document.getElementById("bottom").value = mapbounds._southWest.lat;
+	document.getElementById("left").value = mapbounds._southWest.lng;
+	
+	map.on('move', function(e) {
+    var mapbounds = map.getBounds();
+	document.getElementById("top").value = mapbounds._northEast.lat;
+	document.getElementById("right").value = mapbounds._northEast.lng;
+	document.getElementById("bottom").value = mapbounds._southWest.lat;
+	document.getElementById("left").value = mapbounds._southWest.lng;
+	});
+	
+	map.on('zoomend', function(e) {
+    var mapzoom = map.getZoom();
+	if (mapzoom < 7){warningzoom.innerHTML = "Area too big, the query will probably not work or return 0 features"}
+	else{warningzoom.innerHTML = ""}
+	console.log(mapzoom);
+	})
+	
+
+	
+function run() {
+
+if (document.getElementById("categoryId").value == '') {alert("Please enter a category")}
+
+else {
+
+
+	$("#spin_div").show();
+	$("#shadow").show();
+	$("#alertsucess").hide();
+	$("#alert100").hide();
+	
+	export_points.innerHTML = "";
+	export_poly.innerHTML = "";
+	
+	poly = [];
+	poly_fc = [];
+	poly_geojson.clearLayers();
+	
+
+	centro = [];
+	centro_fc = [];
+	centro_geojson.clearLayers();
+	
+	
+	
+	var key = document.getElementById("key").value;
+	var categoryId = document.getElementById("categoryId").value;
+	var categoryId_number;
+	var top = document.getElementById("top").value;
+	var right = document.getElementById("right").value;
+	var bottom = document.getElementById("bottom").value;
+	var left = document.getElementById("left").value;
+	
+	for (var i in dict) {
+	if(categoryId == dict[i].Name){categoryId_number = dict[i].Id}
+	else{}
+	}
+	
+	var queryUrl = "http://api.wikimapia.org/?key="+key+"&function=box&coordsby=bbox&bbox="+left+"%2C"+bottom+"%2C"+right+"%2C"+top+"&category="+categoryId_number+"&count=100&format=json";
+	
+	console.log(queryUrl)
+	
+	$.getJSON( queryUrl, function( data ) {
+		console.log(data);
+		
+		if (!data.folder) { 
+		
+			if(data.debug[0]){
+				alert(data.debug[0].message);
+				$("#spin_div").hide();
+				$("#shadow").hide();
+				
+				
+				}
+			else{alert(data.debug.message);
+			$("#spin_div").hide();
+				$("#shadow").hide();}
+			
+
+
+
+		} else{
+		$("#alertsucess").show();
+		if (data.folder.length == 1) {number_returned.innerHTML = "<strong>Success!</strong> The query returned "+data.folder.length+" feature.";}
+		else {number_returned.innerHTML = "<strong>Success!</strong> The query returned "+data.folder.length+" features.";}
+		
+		if (data.folder.length == 100) { $("#alert100").show(); } else{$("#alert100").hide();}
+		
+		
+		
+		for ( var i in data.folder){
+		var item = data.folder[i];
+		var coordinates = [];
+		item.polygon[item.polygon.length] = item.polygon[0];
+		
+			for (var y in item.polygon){
+			item2 = item.coordinates;
+			coordinates.push([item.polygon[y].x,item.polygon[y].y]);
+			
+			
+			}
+		var sourceLang = item.language_iso;
+		var transUrl = "https://translate.google.fr/?hl=en#"+sourceLang+"/en/"+encodeURI(item.title)+""
+		poly.push(turf.polygon([coordinates],{"name":item.title, "type":categoryId, "sourceLang": sourceLang,"transUrl": transUrl}));
+		}
+		
+		
+		
+		for (var i in poly) {
+		centro.push(turf.centroid(poly[i]));
+		centro[i].properties.name = poly[i].properties.name;
+		centro[i].properties.transUrl = poly[i].properties.transUrl;
+		centro[i].properties.sourceLang = poly[i].properties.sourceLang;
+		centro[i].properties.type = categoryId;
+		
+		}
+		
+		poly_geojson = L.geoJson(poly,{
+		onEachFeature(feature, layer) {
+		if (feature.properties.sourceLang == "en") {layer.bindPopup("<h4>"+feature.properties.name+"</h4>")}
+		else {layer.bindPopup("<h4>"+feature.properties.name+"</h4><a target='_blank' href="+feature.properties.transUrl+">Translate to english</a>")}
+		}
+		}).addTo(map);
+		
+		centro_geojson = L.geoJson(centro,{
+		onEachFeature(feature, layer) {
+		if (feature.properties.sourceLang == "en") {layer.bindPopup("<h4>"+feature.properties.name+"</h4>")}
+		else {layer.bindPopup("<h4>"+feature.properties.name+"</h4><a target='_blank' href="+feature.properties.transUrl+">Translate to english</a>")}
+		}
+		}).addTo(map);
+		
+		
+		var centro_fc = turf.featurecollection(centro);
+		var poly_fc = turf.featurecollection(poly);
+		
+		var data_centro = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(centro_fc));
+		var data_poly = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(poly_fc));
+		
+		$('<a href="data:' + data_centro + '" download="'+categoryId+'_points.geojson">Export as points</a>').appendTo('#export_points');
+		$('<a href="data:' + data_poly + '" download="'+categoryId+'_poly.geojson">Export as polygons</a>').appendTo('#export_poly');
+		
+		$("#spin_div").hide();
+		$("#shadow").hide();
+		
+	}})
+	
+	
+	
+  .fail(function() {
+    alert( "error, please retry later" );
+  })
+  
+  }
+	
+	
+	
+	}
+	
+
+
+	
+	
+var opts = {
+  lines: 13 // The number of lines to draw
+, length: 28 // The length of each line
+, width: 14 // The line thickness
+, radius: 42 // The radius of the inner circle
+, scale: 1 // Scales overall size of the spinner
+, corners: 1 // Corner roundness (0..1)
+, color: '#fff' // #rgb or #rrggbb or array of colors
+, opacity: 0.25 // Opacity of the lines
+, rotate: 0 // The rotation offset
+, direction: 1 // 1: clockwise, -1: counterclockwise
+, speed: 1 // Rounds per second
+, trail: 60 // Afterglow percentage
+, fps: 20 // Frames per second when using setTimeout() as a fallback for CSS
+, zIndex: 2e9 // The z-index (defaults to 2000000000)
+, className: 'spinner' // The CSS class to assign to the spinner
+, top: '50%' // Top position relative to parent
+, left: '50%' // Left position relative to parent
+, shadow: false // Whether to render a shadow
+, hwaccel: false // Whether to use hardware acceleration
+, position: 'absolute' // Element positioning
+}
+var target = document.getElementById('spin_div')
+var spinner = new Spinner(opts).spin(target);
+	
+	
+	
+	
+map.addControl( new L.Control.Search({
+			url: 'http://nominatim.openstreetmap.org/search?format=json&q={s}',
+			jsonpParam: 'json_callback',
+			propertyName: 'display_name',
+			propertyLoc: ['lat','lon'],
+			circleLocation: false,
+			markerLocation: false,			
+			autoType: false,
+			autoCollapse: true,
+			minLength: 2,
+			zoom:10
+		}) );	
+		
+
+  
+
+
+
+
+
+  
+//var translate = doGet(sourceText, sourceLang, targetLang);
+</script>
+
+	
+	
+	
+	
+	
+	
+	
+
+</body>
+
+
+</html>
